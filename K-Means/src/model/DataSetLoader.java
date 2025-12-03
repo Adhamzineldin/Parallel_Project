@@ -1,8 +1,10 @@
 package model;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -122,6 +124,117 @@ public class DataSetLoader {
         // Total_Ct_Chng_Q4_Q1, Avg_Utilization_Ratio
         int[] bankCols = {2, 4, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
         return loadCSV("data/BankChurners.csv", bankCols);
+    }
+
+    /**
+     * Generate a synthetic 2D dataset with multiple clusters
+     * Creates well-separated clusters for testing K-Means
+     * 
+     * @param numPoints Total number of points to generate
+     * @param numClusters Number of distinct clusters to create
+     * @param noiseLevel Amount of noise/variance (0.0 to 1.0)
+     * @return List of 2D points
+     */
+    public static List<Point> generateSynthetic2DDataset(int numPoints, int numClusters, double noiseLevel) {
+        List<Point> points = new ArrayList<>();
+        java.util.Random random = new java.util.Random(42); // Fixed seed for reproducibility
+        
+        // Generate cluster centers spread across a 2D space
+        double[][] clusterCenters = new double[numClusters][2];
+        for (int i = 0; i < numClusters; i++) {
+            // Spread centers in a grid-like pattern
+            double angle = 2 * Math.PI * i / numClusters;
+            double radius = 50 + (i % 3) * 30; // Vary distance from center
+            clusterCenters[i][0] = 100 + radius * Math.cos(angle);
+            clusterCenters[i][1] = 100 + radius * Math.sin(angle);
+        }
+        
+        // Generate points around each cluster center
+        int pointsPerCluster = numPoints / numClusters;
+        int remainingPoints = numPoints % numClusters;
+        
+        for (int clusterIdx = 0; clusterIdx < numClusters; clusterIdx++) {
+            int pointsInThisCluster = pointsPerCluster + (clusterIdx < remainingPoints ? 1 : 0);
+            
+            for (int i = 0; i < pointsInThisCluster; i++) {
+                // Generate point with Gaussian distribution around cluster center
+                double x = clusterCenters[clusterIdx][0] + random.nextGaussian() * (10 + noiseLevel * 20);
+                double y = clusterCenters[clusterIdx][1] + random.nextGaussian() * (10 + noiseLevel * 20);
+                
+                points.add(new Point(x, y));
+            }
+        }
+        
+        // Shuffle points to mix clusters
+        java.util.Collections.shuffle(points, random);
+        
+        return points;
+    }
+
+    /**
+     * Generate a default synthetic 2D dataset (300 points, 4 clusters, moderate noise)
+     */
+    public static List<Point> generateSynthetic2DDataset() {
+        return generateSynthetic2DDataset(300, 4, 0.3);
+    }
+
+    /**
+     * Save a list of points to a CSV file
+     * 
+     * @param points The points to save
+     * @param filePath The path where to save the CSV file
+     * @param includeHeader Whether to include a header row
+     */
+    public static void savePointsToCSV(List<Point> points, String filePath, boolean includeHeader) {
+        if (points == null || points.isEmpty()) {
+            throw new IllegalArgumentException("Points list cannot be null or empty");
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            // Write header if requested
+            if (includeHeader) {
+                int dimensions = points.get(0).getDimension();
+                StringBuilder header = new StringBuilder();
+                for (int i = 0; i < dimensions; i++) {
+                    if (i > 0) header.append(",");
+                    header.append("Dimension_").append(i);
+                }
+                writer.write(header.toString());
+                writer.newLine();
+            }
+
+            // Write data points
+            for (Point p : points) {
+                double[] coords = p.getCoordinates();
+                StringBuilder line = new StringBuilder();
+                for (int i = 0; i < coords.length; i++) {
+                    if (i > 0) line.append(",");
+                    line.append(coords[i]);
+                }
+                writer.write(line.toString());
+                writer.newLine();
+            }
+
+        } catch (IOException e) {
+            System.err.println("Error saving CSV file: " + filePath);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to save dataset to: " + filePath, e);
+        }
+    }
+
+    /**
+     * Save synthetic dataset to CSV file in the data directory
+     * 
+     * @param numPoints Number of points
+     * @param numClusters Number of clusters
+     * @param noiseLevel Noise level
+     * @param filename Output filename (e.g., "synthetic_2d.csv")
+     */
+    public static void generateAndSaveSynthetic2D(int numPoints, int numClusters, double noiseLevel, String filename) {
+        List<Point> points = generateSynthetic2DDataset(numPoints, numClusters, noiseLevel);
+        String filePath = "data/" + filename;
+        savePointsToCSV(points, filePath, true);
+        System.out.println("Generated and saved " + numPoints + " points to " + filePath);
     }
 
     /**

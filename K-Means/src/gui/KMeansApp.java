@@ -39,6 +39,9 @@ public class KMeansApp extends JFrame {
     private JButton runButton;
     private JButton animateButton;
     private JButton stopButton;
+    private JButton compareButton;
+    private JButton saveDatasetButton;
+    private JButton exportResultsButton;
 
     private ScatterPlotPanel scatterPlot;
     private JTable resultsTable;
@@ -122,6 +125,15 @@ public class KMeansApp extends JFrame {
                         btn.setForeground(text);
                     } else if (btnText.equals("Animate")) {
                         btn.setBackground(new Color(60, 179, 113));
+                        btn.setForeground(text);
+                    } else if (btnText.equals("Compare Sequential vs Parallel")) {
+                        btn.setBackground(new Color(138, 43, 226)); // Blue violet
+                        btn.setForeground(text);
+                    } else if (btnText.equals("Save Dataset to CSV")) {
+                        btn.setBackground(new Color(70, 130, 180)); // Steel blue
+                        btn.setForeground(text);
+                    } else if (btnText.equals("Export Results to CSV")) {
+                        btn.setBackground(new Color(70, 130, 180)); // Steel blue
                         btn.setForeground(text);
                     } else if (btnText.equals("Stop")) {
                         btn.setBackground(new Color(220, 20, 60));
@@ -224,7 +236,7 @@ public class KMeansApp extends JFrame {
 
     private void createComponents() {
         // Dataset selection with custom UI for dark mode
-        datasetCombo = new JComboBox<>(new String[]{"Mall Customers", "Bank Customers"});
+        datasetCombo = new JComboBox<>(new String[]{"Mall Customers", "Bank Customers", "Synthetic 2D Dataset"});
         datasetCombo.setBackground(new Color(40, 40, 45));
         datasetCombo.setForeground(new Color(220, 220, 220));
         datasetCombo.setOpaque(true);
@@ -291,6 +303,33 @@ public class KMeansApp extends JFrame {
         stopButton.setBorderPainted(true);
         stopButton.setEnabled(false);
         stopButton.addActionListener(e -> stopAnimation());
+
+        // Compare button
+        compareButton = new JButton("Compare Sequential vs Parallel");
+        compareButton.setOpaque(true);
+        compareButton.setFocusPainted(false);
+        compareButton.setBorderPainted(true);
+        compareButton.setForeground(Color.WHITE);
+        compareButton.setContentAreaFilled(false);
+        compareButton.addActionListener(e -> compareSequentialVsParallel());
+
+        // Save dataset button
+        saveDatasetButton = new JButton("Save Dataset to CSV");
+        saveDatasetButton.setOpaque(true);
+        saveDatasetButton.setFocusPainted(false);
+        saveDatasetButton.setBorderPainted(true);
+        saveDatasetButton.setForeground(Color.WHITE);
+        saveDatasetButton.setContentAreaFilled(false);
+        saveDatasetButton.addActionListener(e -> saveDatasetToCSV());
+
+        // Export results button
+        exportResultsButton = new JButton("Export Results to CSV");
+        exportResultsButton.setOpaque(true);
+        exportResultsButton.setFocusPainted(false);
+        exportResultsButton.setBorderPainted(true);
+        exportResultsButton.setForeground(Color.WHITE);
+        exportResultsButton.setContentAreaFilled(false);
+        exportResultsButton.addActionListener(e -> exportResultsToCSV());
 
         // Visualization
         scatterPlot = new ScatterPlotPanel();
@@ -495,9 +534,12 @@ public class KMeansApp extends JFrame {
         panel.add(restartPanel);
         panel.add(Box.createVerticalStrut(20));
 
-        JPanel buttonPanel = new JPanel(new GridLayout(3, 1, 5, 5));
+        JPanel buttonPanel = new JPanel(new GridLayout(6, 1, 5, 5));
         buttonPanel.add(runButton);
         buttonPanel.add(animateButton);
+        buttonPanel.add(compareButton);
+        buttonPanel.add(saveDatasetButton);
+        buttonPanel.add(exportResultsButton);
         buttonPanel.add(stopButton);
         panel.add(buttonPanel);
 
@@ -525,10 +567,16 @@ public class KMeansApp extends JFrame {
                     currentDataset = DataSetLoader.loadMallDataset();
                     infoArea.setText("Loaded Mall Customers dataset: " + currentDataset.size() + " points\n" +
                             "Dimensions: " + (currentDataset.isEmpty() ? 0 : currentDataset.get(0).getDimension()));
-                } else {
+                } else if (selection == 1) {
                     currentDataset = DataSetLoader.loadBankDataset();
                     infoArea.setText("Loaded Bank Customers dataset: " + currentDataset.size() + " points\n" +
                             "Dimensions: " + (currentDataset.isEmpty() ? 0 : currentDataset.get(0).getDimension()));
+                } else {
+                    // Synthetic 2D dataset
+                    currentDataset = DataSetLoader.generateSynthetic2DDataset();
+                    infoArea.setText("Generated Synthetic 2D dataset: " + currentDataset.size() + " points\n" +
+                            "Dimensions: 2 (X, Y)\n" +
+                            "This is a synthetic dataset with 4 clusters for testing.");
                 }
 
                 if (!currentDataset.isEmpty()) {
@@ -757,6 +805,259 @@ public class KMeansApp extends JFrame {
             animateButton.setEnabled(true);
             stopButton.setEnabled(false);
         });
+    }
+
+    /**
+     * Compare Sequential vs Parallel implementations
+     * Runs both and displays runtime and SSE comparison
+     */
+    private void compareSequentialVsParallel() {
+        if (currentDataset == null || currentDataset.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please load a dataset first.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        runButton.setEnabled(false);
+        animateButton.setEnabled(false);
+        compareButton.setEnabled(false);
+        stopButton.setEnabled(false);
+
+        executor.execute(() -> {
+            try {
+                int k = (Integer) kSpinner.getValue();
+                int maxIter = (Integer) maxIterationsSpinner.getValue();
+                double tol = (Double) toleranceSpinner.getValue();
+                boolean useKMeansPlusPlus = kmeansPlusPlusCheck.isSelected();
+
+                KMeansConfig config = new KMeansConfig(k, maxIter, tol);
+
+                // Run Sequential
+                long seqStartTime = System.currentTimeMillis();
+                KMeansSequential sequential = new KMeansSequential(config, currentDataset);
+                if (useKMeansPlusPlus) {
+                    List<Cluster> initialClusters = bonus.KMeansPlusPlusInitializer.initializeClusters(currentDataset, k);
+                    sequential.setInitialClusters(initialClusters);
+                }
+                sequential.run();
+                long seqEndTime = System.currentTimeMillis();
+                long seqRuntime = seqEndTime - seqStartTime;
+                double seqSSE = sequential.computeSSE();
+                int seqIterations = sequential.getIterationsCompleted();
+
+                // Run Parallel
+                long parStartTime = System.currentTimeMillis();
+                KMeansParallel parallel = new KMeansParallel(config, currentDataset);
+                if (useKMeansPlusPlus) {
+                    List<Cluster> initialClusters = bonus.KMeansPlusPlusInitializer.initializeClusters(currentDataset, k);
+                    parallel.setInitialClusters(initialClusters);
+                }
+                parallel.run();
+                long parEndTime = System.currentTimeMillis();
+                long parRuntime = parEndTime - parStartTime;
+                double parSSE = parallel.computeSSE();
+                int parIterations = parallel.getIterationsCompleted();
+
+                // Calculate speedup
+                double speedup = (double) seqRuntime / Math.max(parRuntime, 1);
+                String initType = useKMeansPlusPlus ? "k-means++" : "Random";
+
+                final long finalSeqRuntime = seqRuntime;
+                final long finalParRuntime = parRuntime;
+                final double finalSeqSSE = seqSSE;
+                final double finalParSSE = parSSE;
+                final int finalSeqIterations = seqIterations;
+                final int finalParIterations = parIterations;
+                final double finalSpeedup = speedup;
+                final String finalInitType = initType;
+
+                SwingUtilities.invokeLater(() -> {
+                    // Add both results to table
+                    tableModel.addRow(new Object[]{
+                            "Sequential",
+                            k,
+                            String.format("%.4f", finalSeqSSE),
+                            finalSeqRuntime + " ms",
+                            finalSeqIterations,
+                            finalInitType
+                    });
+
+                    tableModel.addRow(new Object[]{
+                            "Parallel",
+                            k,
+                            String.format("%.4f", finalParSSE),
+                            finalParRuntime + " ms",
+                            finalParIterations,
+                            finalInitType
+                    });
+
+                    // Display comparison in info area
+                    infoArea.setText("=== SEQUENTIAL vs PARALLEL COMPARISON ===\n\n" +
+                            "Sequential Results:\n" +
+                            "  SSE: " + String.format("%.4f", finalSeqSSE) + "\n" +
+                            "  Runtime: " + finalSeqRuntime + " ms\n" +
+                            "  Iterations: " + finalSeqIterations + "\n\n" +
+                            "Parallel Results:\n" +
+                            "  SSE: " + String.format("%.4f", finalParSSE) + "\n" +
+                            "  Runtime: " + finalParRuntime + " ms\n" +
+                            "  Iterations: " + finalParIterations + "\n\n" +
+                            "Performance:\n" +
+                            "  Speedup: " + String.format("%.2f", finalSpeedup) + "x\n" +
+                            "  Time Saved: " + (finalSeqRuntime - finalParRuntime) + " ms (" +
+                            String.format("%.1f", ((double)(finalSeqRuntime - finalParRuntime) / Math.max(finalSeqRuntime, 1) * 100)) + "%)\n\n" +
+                            "Quality:\n" +
+                            "  SSE Difference: " + String.format("%.4f", Math.abs(finalSeqSSE - finalParSSE)) + "\n" +
+                            (Math.abs(finalSeqSSE - finalParSSE) < 0.01 ? "  ✓ Results are identical (within tolerance)\n" :
+                                    "  ⚠ Results differ slightly (random initialization)\n"));
+
+                    // Show the parallel result in the plot (usually better or same)
+                    currentClusters = parallel.getClusters();
+                    scatterPlot.setClusters(currentClusters);
+
+                    runButton.setEnabled(true);
+                    animateButton.setEnabled(true);
+                    compareButton.setEnabled(true);
+                });
+
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, "Error comparing implementations: " + e.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                    runButton.setEnabled(true);
+                    animateButton.setEnabled(true);
+                    compareButton.setEnabled(true);
+                    e.printStackTrace();
+                });
+            }
+        });
+    }
+
+    /**
+     * Save current dataset to CSV file
+     */
+    private void saveDatasetToCSV() {
+        if (currentDataset == null || currentDataset.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No dataset loaded to save.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Save Dataset to CSV");
+        fileChooser.setSelectedFile(new java.io.File("dataset.csv"));
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("CSV Files", "csv"));
+
+        int result = fileChooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            java.io.File file = fileChooser.getSelectedFile();
+            String filePath = file.getAbsolutePath();
+            
+            // Ensure .csv extension
+            if (!filePath.toLowerCase().endsWith(".csv")) {
+                filePath += ".csv";
+            }
+            
+            // Create final copy for lambda
+            final String finalFilePath = filePath;
+
+            executor.execute(() -> {
+                try {
+                    DataSetLoader.savePointsToCSV(currentDataset, finalFilePath, true);
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this,
+                                "Dataset saved successfully to:\n" + finalFilePath,
+                                "Success", JOptionPane.INFORMATION_MESSAGE);
+                        infoArea.append("\nDataset saved to: " + finalFilePath + "\n");
+                    });
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this,
+                                "Error saving dataset: " + e.getMessage(),
+                                "Error", JOptionPane.ERROR_MESSAGE);
+                        e.printStackTrace();
+                    });
+                }
+            });
+        }
+    }
+
+    /**
+     * Export results table to CSV file
+     */
+    private void exportResultsToCSV() {
+        if (tableModel.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "No results to export.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Export Results to CSV");
+        fileChooser.setSelectedFile(new java.io.File("kmeans_results.csv"));
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("CSV Files", "csv"));
+
+        int result = fileChooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            java.io.File file = fileChooser.getSelectedFile();
+            String filePath = file.getAbsolutePath();
+            
+            // Ensure .csv extension
+            if (!filePath.toLowerCase().endsWith(".csv")) {
+                filePath += ".csv";
+            }
+            
+            // Create final copy for lambda
+            final String finalFilePath = filePath;
+
+            executor.execute(() -> {
+                try {
+                    try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.FileWriter(finalFilePath))) {
+                        // Write header
+                        int colCount = tableModel.getColumnCount();
+                        StringBuilder header = new StringBuilder();
+                        for (int i = 0; i < colCount; i++) {
+                            if (i > 0) header.append(",");
+                            header.append(tableModel.getColumnName(i));
+                        }
+                        writer.write(header.toString());
+                        writer.newLine();
+
+                        // Write data rows
+                        for (int row = 0; row < tableModel.getRowCount(); row++) {
+                            StringBuilder line = new StringBuilder();
+                            for (int col = 0; col < colCount; col++) {
+                                if (col > 0) line.append(",");
+                                Object value = tableModel.getValueAt(row, col);
+                                if (value != null) {
+                                    String strValue = value.toString();
+                                    // Escape commas and quotes in CSV
+                                    if (strValue.contains(",") || strValue.contains("\"") || strValue.contains("\n")) {
+                                        strValue = "\"" + strValue.replace("\"", "\"\"") + "\"";
+                                    }
+                                    line.append(strValue);
+                                }
+                            }
+                            writer.write(line.toString());
+                            writer.newLine();
+                        }
+                    }
+
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this,
+                                "Results exported successfully to:\n" + finalFilePath,
+                                "Success", JOptionPane.INFORMATION_MESSAGE);
+                        infoArea.append("\nResults exported to: " + finalFilePath + "\n");
+                    });
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this,
+                                "Error exporting results: " + e.getMessage(),
+                                "Error", JOptionPane.ERROR_MESSAGE);
+                        e.printStackTrace();
+                    });
+                }
+            });
+        }
     }
 
     public static void main(String[] args) {
