@@ -19,6 +19,7 @@ public class KMeansParallel {
     private final List<Cluster> clusters;
     private final ForkJoinPool pool;
 
+    
     public KMeansParallel(KMeansConfig config, List<Point> points) {
         this.config = config;
         this.points = points;
@@ -26,11 +27,12 @@ public class KMeansParallel {
         this.pool = ForkJoinPool.commonPool(); // uses all available cores
     }
 
-    /**
-     * Run the K-Means algorithm in parallel
-     */
+  
     public void run() {
-        initializeClusters();
+        // Only initialize if clusters are empty (allows for custom initialization)
+        if (clusters.isEmpty()) {
+            initializeClusters();
+        }
 
         boolean converged = false;
         int iteration = 0;
@@ -50,10 +52,10 @@ public class KMeansParallel {
 
         System.out.println("Parallel K-Means finished in " + iteration + " iterations");
     }
+    
+    
 
-    /**
-     * Initialize clusters with random points from dataset as centroids
-     */
+   
     private void initializeClusters() {
         clusters.clear();
         List<Point> shuffled = new ArrayList<>(points);
@@ -64,9 +66,19 @@ public class KMeansParallel {
         }
     }
 
-    /**
-     * Compute SSE (sum of squared errors) for current clustering
-     */
+ 
+    public void setInitialClusters(List<Cluster> initialClusters) {
+        if (initialClusters == null || initialClusters.size() != config.getK()) {
+            throw new IllegalArgumentException("Initial clusters must be non-null and match k=" + config.getK());
+        }
+        clusters.clear();
+        // Create deep copies to avoid reference issues
+        for (Cluster original : initialClusters) {
+            Cluster copy = new Cluster(new Point(original.getCentroid().getCoordinates()));
+            clusters.add(copy);
+        }
+    }
+
     public double computeSSE() {
         double sse = 0.0;
         for (Cluster c : clusters) {

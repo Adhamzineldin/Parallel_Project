@@ -55,6 +55,7 @@ public class Cluster {
 
         centroid = new Point(newCoords);
     }
+    
 
     @Override
     public String toString() {

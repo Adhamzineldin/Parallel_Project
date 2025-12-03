@@ -21,11 +21,12 @@ public class KMeansSequential {
         this.clusters = new ArrayList<>();
     }
 
-    /**
-     * Run the K-Means algorithm sequentially
-     */
+
     public void run() {
-        initializeClusters();
+        // Only initialize if clusters are empty (allows for custom initialization)
+        if (clusters.isEmpty()) {
+            initializeClusters();
+        }
 
         boolean converged = false;
         int iteration = 0;
@@ -46,9 +47,7 @@ public class KMeansSequential {
         System.out.println("Sequential K-Means finished in " + iteration + " iterations");
     }
 
-    /**
-     * Initialize clusters with random points from dataset as centroids
-     */
+    
     private void initializeClusters() {
         clusters.clear();
         List<Point> shuffled = new ArrayList<>(points);
@@ -59,9 +58,20 @@ public class KMeansSequential {
         }
     }
 
-    /**
-     * Assign each point to the nearest cluster centroid
-     */
+   
+    public void setInitialClusters(List<Cluster> initialClusters) {
+        if (initialClusters == null || initialClusters.size() != config.getK()) {
+            throw new IllegalArgumentException("Initial clusters must be non-null and match k=" + config.getK());
+        }
+        clusters.clear();
+        // Create deep copies to avoid reference issues
+        for (Cluster original : initialClusters) {
+            Cluster copy = new Cluster(new Point(original.getCentroid().getCoordinates()));
+            clusters.add(copy);
+        }
+    }
+
+    
     private void assignPointsToClusters() {
         for (Point p : points) {
             Cluster nearest = null;
@@ -81,9 +91,7 @@ public class KMeansSequential {
         }
     }
 
-    /**
-     * Recompute centroids and return true if all centroid movements are below tolerance
-     */
+
     private boolean recomputeCentroids() {
         boolean converged = true;
 
@@ -99,9 +107,6 @@ public class KMeansSequential {
         return converged;
     }
 
-    /**
-     * Compute SSE (sum of squared errors) for current clustering
-     */
     public double computeSSE() {
         double sse = 0.0;
         for (Cluster c : clusters) {
@@ -114,9 +119,7 @@ public class KMeansSequential {
         return sse;
     }
 
-    /**
-     * Get clusters after running algorithm
-     */
+    
     public List<Cluster> getClusters() {
         return clusters;
     }
