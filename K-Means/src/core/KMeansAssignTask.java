@@ -10,7 +10,7 @@ import java.util.concurrent.RecursiveAction;
 /**
  * RecursiveAction to assign points to nearest cluster in parallel
  */
-class KMeansAssignTask extends RecursiveAction {
+public class KMeansAssignTask extends RecursiveAction {
     private static final int THRESHOLD = 1000; // chunk size
     private final List<Point> points;
     private final int start;

@@ -1,15 +1,26 @@
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-public class Main {
-    public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
+import gui.KMeansApp;
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
-        }
+import javax.swing.*;
+
+/**
+ * Main entry point for K-Means Clustering Application
+ * Launches the GUI application
+ */
+public class Main {
+    
+    
+    
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                String lookAndFeel = javax.swing.UIManager.getSystemLookAndFeelClassName();
+                javax.swing.UIManager.setLookAndFeel(lookAndFeel);
+            } catch (Exception e) {
+                // Use default look and feel if system L&F is not available
+                e.printStackTrace();
+            }
+
+            new KMeansApp().setVisible(true);
+        });
     }
 }

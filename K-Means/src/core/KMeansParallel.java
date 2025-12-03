@@ -18,6 +18,7 @@ public class KMeansParallel {
     private final List<Point> points;
     private final List<Cluster> clusters;
     private final ForkJoinPool pool;
+    private int iterationsCompleted = 0;
 
     
     public KMeansParallel(KMeansConfig config, List<Point> points) {
@@ -50,7 +51,12 @@ public class KMeansParallel {
             iteration++;
         }
 
+        iterationsCompleted = iteration;
         System.out.println("Parallel K-Means finished in " + iteration + " iterations");
+    }
+    
+    public int getIterationsCompleted() {
+        return iterationsCompleted;
     }
     
     

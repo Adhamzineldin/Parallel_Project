@@ -10,7 +10,7 @@ import java.util.concurrent.RecursiveTask;
 /**
      * RecursiveTask to recompute centroids in parallel
      */
-     class RecomputeCentroidsTask extends RecursiveTask<Boolean> {
+public class RecomputeCentroidsTask extends RecursiveTask<Boolean> {
         private static final int THRESHOLD = 1; // split if more than 5 clusters
         private final List<Cluster> clusters;
         private final int start;

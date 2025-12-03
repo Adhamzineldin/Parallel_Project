@@ -46,6 +46,7 @@ public class MultiStartKMeans {
         double bestSSE = Double.MAX_VALUE;
         int bestRestart = -1;
         long totalTime = 0;
+        int bestIterations = 0;
 
         System.out.println("Running " + numRestarts + " restarts with " + 
                           (useParallel ? "parallel" : "sequential") + " implementation" +
@@ -58,7 +59,8 @@ public class MultiStartKMeans {
             long startTime = System.currentTimeMillis();
             
             // Run K-means for this restart
-            List<Cluster> clusters = runSingleRestart();
+            int iterations = runSingleRestartWithIterations();
+            List<Cluster> clusters = getClustersFromLastRun();
             
             long endTime = System.currentTimeMillis();
             long elapsed = endTime - startTime;
@@ -69,13 +71,14 @@ public class MultiStartKMeans {
 
             System.out.println("Restart " + (restart + 1) + "/" + numRestarts + 
                              ": SSE = " + String.format("%.4f", sse) + 
-                             ", Time = " + elapsed + "ms");
+                             ", Time = " + elapsed + "ms, Iterations: " + iterations);
 
             // Update best result if this is better
             if (sse < bestSSE) {
                 bestSSE = sse;
                 bestClusters = deepCopyClusters(clusters);
                 bestRestart = restart + 1;
+                bestIterations = iterations;
             }
         }
 
@@ -84,42 +87,38 @@ public class MultiStartKMeans {
         System.out.println("Total time: " + totalTime + "ms, Average: " + 
                          (totalTime / numRestarts) + "ms per restart");
 
-        return new MultiStartResult(bestClusters, bestSSE, bestRestart, totalTime);
+        return new MultiStartResult(bestClusters, bestSSE, bestRestart, totalTime, bestIterations);
     }
     
-    private List<Cluster> runSingleRestart() {
+    private KMeansSequential lastSequential = null;
+    private KMeansParallel lastParallel = null;
+    
+    private int runSingleRestartWithIterations() {
         if (useParallel) {
-            return runParallel();
+            lastParallel = new KMeansParallel(config, points);
+            if (useKMeansPlusPlus) {
+                List<Cluster> initialClusters = KMeansPlusPlusInitializer.initializeClusters(points, config.getK());
+                lastParallel.setInitialClusters(initialClusters);
+            }
+            lastParallel.run();
+            return lastParallel.getIterationsCompleted();
         } else {
-            return runSequential();
+            lastSequential = new KMeansSequential(config, points);
+            if (useKMeansPlusPlus) {
+                List<Cluster> initialClusters = KMeansPlusPlusInitializer.initializeClusters(points, config.getK());
+                lastSequential.setInitialClusters(initialClusters);
+            }
+            lastSequential.run();
+            return lastSequential.getIterationsCompleted();
         }
     }
-
-   
-    private List<Cluster> runSequential() {
-        KMeansSequential kmeans = new KMeansSequential(config, points);
-        
-        // Use k-means++ initialization if requested
-        if (useKMeansPlusPlus) {
-            List<Cluster> initialClusters = KMeansPlusPlusInitializer.initializeClusters(points, config.getK());
-            kmeans.setInitialClusters(initialClusters);
+    
+    private List<Cluster> getClustersFromLastRun() {
+        if (useParallel) {
+            return lastParallel != null ? lastParallel.getClusters() : new ArrayList<>();
+        } else {
+            return lastSequential != null ? lastSequential.getClusters() : new ArrayList<>();
         }
-        
-        kmeans.run();
-        return kmeans.getClusters();
-    }
-
-    private List<Cluster> runParallel() {
-        KMeansParallel kmeans = new KMeansParallel(config, points);
-        
-        // Use k-means++ initialization if requested
-        if (useKMeansPlusPlus) {
-            List<Cluster> initialClusters = KMeansPlusPlusInitializer.initializeClusters(points, config.getK());
-            kmeans.setInitialClusters(initialClusters);
-        }
-        
-        kmeans.run();
-        return kmeans.getClusters();
     }
 
   

@@ -12,12 +12,14 @@ import java.util.List;
         private final double sse;
         private final int bestRestart;
         private final long totalTime;
+        private final int iterations;
 
-        public MultiStartResult(List<Cluster> clusters, double sse, int bestRestart, long totalTime) {
+        public MultiStartResult(List<Cluster> clusters, double sse, int bestRestart, long totalTime, int iterations) {
             this.clusters = clusters;
             this.sse = sse;
             this.bestRestart = bestRestart;
             this.totalTime = totalTime;
+            this.iterations = iterations;
         }
 
         public List<Cluster> getClusters() {
@@ -34,5 +36,9 @@ import java.util.List;
 
         public long getTotalTime() {
             return totalTime;
+        }
+        
+        public int getIterations() {
+            return iterations;
         }
     }

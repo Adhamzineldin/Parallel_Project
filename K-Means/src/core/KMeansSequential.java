@@ -14,6 +14,7 @@ public class KMeansSequential {
     private final KMeansConfig config;
     private final List<Point> points;
     private final List<Cluster> clusters;
+    private int iterationsCompleted = 0;
 
     public KMeansSequential(KMeansConfig config, List<Point> points) {
         this.config = config;
@@ -44,7 +45,12 @@ public class KMeansSequential {
             iteration++;
         }
 
+        iterationsCompleted = iteration;
         System.out.println("Sequential K-Means finished in " + iteration + " iterations");
+    }
+    
+    public int getIterationsCompleted() {
+        return iterationsCompleted;
     }
 
     
