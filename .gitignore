@@ -1,0 +1,51 @@
+# Compiled class files
+*.class
+
+# Output directories
+out/
+build/
+target/
+bin/
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Maven (if used)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Gradle (if used)
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+
