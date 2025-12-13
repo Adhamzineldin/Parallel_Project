@@ -10,6 +10,7 @@ import model.Point;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -164,8 +165,11 @@ public class CentroidAnimationController {
                 c.clearPoints();
             }
             
-            // Parallel assignment
-            pool.invoke(new KMeansAssignTask(points, 0, points.size(), clusters));
+            // Parallel assignment using local-reduce-merge pattern
+            KMeansAssignTask assignTask = new KMeansAssignTask(points, 0, points.size(), clusters);
+            Map<Integer, List<Point>> assignments = pool.invoke(assignTask);
+            // Merge local accumulations into clusters
+            KMeansAssignTask.mergeIntoClusters(assignments, clusters);
             
             // Parallel recomputation
             converged = pool.invoke(new RecomputeCentroidsTask(clusters, 0, clusters.size(), config));

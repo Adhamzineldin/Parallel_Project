@@ -8,6 +8,7 @@ import util.RandomUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
@@ -43,8 +44,11 @@ public class KMeansParallel {
             // Clear points
             clusters.forEach(Cluster::clearPoints);
 
-            // Parallel assignment of points
-            pool.invoke(new KMeansAssignTask(points, 0, points.size(), clusters));
+            // Parallel assignment of points using local-reduce-merge pattern
+            KMeansAssignTask assignTask = new KMeansAssignTask(points, 0, points.size(), clusters);
+            Map<Integer, List<Point>> assignments = pool.invoke(assignTask);
+            // Merge local accumulations into clusters
+            KMeansAssignTask.mergeIntoClusters(assignments, clusters);
 
             // Handle empty clusters
             handleEmptyClusters();
