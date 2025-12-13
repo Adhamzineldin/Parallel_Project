@@ -20,7 +20,7 @@ public class KMeansPlusPlusInitializer {
             throw new IllegalArgumentException("k must be positive");
         }
         if (k > points.size()) {
-            throw new IllegalArgumentException("k cannot be greater than the number of points");
+           k = points.size();
         }
 
         List<Point> centroids = new ArrayList<>();
@@ -28,6 +28,7 @@ public class KMeansPlusPlusInitializer {
         // Step 1: Choose first centroid uniformly at random
         int firstIndex = RandomUtils.nextInt(points.size());
         centroids.add(new Point(points.get(firstIndex).getCoordinates()));
+        
         
         // Step 2: Choose remaining k-1 centroids using weighted probability
         for (int i = 1; i < k; i++) {

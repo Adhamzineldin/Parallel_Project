@@ -3,6 +3,7 @@ package core;
 import model.Cluster;
 import model.Point;
 import util.DistanceUtils;
+import util.RandomUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,6 +46,9 @@ public class KMeansParallel {
             // Parallel assignment of points
             pool.invoke(new KMeansAssignTask(points, 0, points.size(), clusters));
 
+            // Handle empty clusters
+            handleEmptyClusters();
+
             // Parallel centroid recomputation
             converged = pool.invoke(new RecomputeCentroidsTask(clusters, 0, clusters.size(), this.config));
 
@@ -67,16 +71,19 @@ public class KMeansParallel {
         List<Point> shuffled = new ArrayList<>(points);
         Collections.shuffle(shuffled, new Random());
 
-        for (int i = 0; i < config.getK(); i++) {
+        int k = Math.min(config.getK(), shuffled.size());
+        
+        for (int i = 0; i < k; i++) {
             clusters.add(new Cluster(shuffled.get(i)));
         }
     }
 
  
     public void setInitialClusters(List<Cluster> initialClusters) {
-        if (initialClusters == null || initialClusters.size() != config.getK()) {
-            throw new IllegalArgumentException("Initial clusters must be non-null and match k=" + config.getK());
-        }
+        int k = Math.min(config.getK(), initialClusters.size());
+//        if (initialClusters == null || initialClusters.size() != config.getK()) {
+//            throw new IllegalArgumentException("Initial clusters must be non-null and match k=" + config.getK());
+//        }
         clusters.clear();
         // Create deep copies to avoid reference issues
         for (Cluster original : initialClusters) {
@@ -99,6 +106,41 @@ public class KMeansParallel {
 
     public List<Cluster> getClusters() {
         return clusters;
+    }
+
+    private void handleEmptyClusters() {
+        // Find empty clusters
+        List<Cluster> emptyClusters = new ArrayList<>();
+        Cluster largestCluster = null;
+        int maxSize = 0;
+
+        for (Cluster c : clusters) {
+            if (c.getPoints().isEmpty()) {
+                emptyClusters.add(c);
+            } else {
+                // Track the largest cluster to steal a point from
+                if (c.getPoints().size() > maxSize) {
+                    maxSize = c.getPoints().size();
+                    largestCluster = c;
+                }
+            }
+        }
+
+        // Reinitialize empty clusters
+        for (Cluster emptyCluster : emptyClusters) {
+            if (largestCluster != null && !largestCluster.getPoints().isEmpty()) {
+                // Strategy 1: Move empty cluster to a random point from the largest cluster
+                List<Point> largestPoints = largestCluster.getPoints();
+                Point randomPoint = largestPoints.get(RandomUtils.nextInt(largestPoints.size()));
+                emptyCluster.setCentroid(new Point(randomPoint.getCoordinates()));
+            } else {
+                // Strategy 2: If no non-empty clusters exist, move to a random point from dataset
+                if (!points.isEmpty()) {
+                    Point randomPoint = points.get(RandomUtils.nextInt(points.size()));
+                    emptyCluster.setCentroid(new Point(randomPoint.getCoordinates()));
+                }
+            }
+        }
     }
 
     
