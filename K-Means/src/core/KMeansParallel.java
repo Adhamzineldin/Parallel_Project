@@ -130,15 +130,12 @@ public class KMeansParallel {
             }
         }
 
-        // Reinitialize empty clusters
         for (Cluster emptyCluster : emptyClusters) {
             if (largestCluster != null && !largestCluster.getPoints().isEmpty()) {
-                // Strategy 1: Move empty cluster to a random point from the largest cluster
                 List<Point> largestPoints = largestCluster.getPoints();
                 Point randomPoint = largestPoints.get(RandomUtils.nextInt(largestPoints.size()));
                 emptyCluster.setCentroid(new Point(randomPoint.getCoordinates()));
             } else {
-                // Strategy 2: If no non-empty clusters exist, move to a random point from dataset
                 if (!points.isEmpty()) {
                     Point randomPoint = points.get(RandomUtils.nextInt(points.size()));
                     emptyCluster.setCentroid(new Point(randomPoint.getCoordinates()));
